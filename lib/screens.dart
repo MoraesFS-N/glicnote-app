@@ -161,7 +161,7 @@ class GlucoseChart extends StatelessWidget {
               Text('${entry.value}', style: const TextStyle(fontSize: 10, color: GlicColors.muted)),
               const SizedBox(height: 5),
               Container(
-                height: math.max(8, (constraints.maxHeight - 50) * entry.value / maximum),
+                height: math.max(8.0, (constraints.maxHeight - 50) * entry.value / maximum),
                 decoration: BoxDecoration(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
                   gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
