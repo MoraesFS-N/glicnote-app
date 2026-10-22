@@ -1,146 +1,193 @@
+import 'widgets/insulin_badge.dart';
+import 'widgets/app_toast.dart';
+import 'widgets/navigation_card.dart';
+import 'screens/complete_profile_screen.dart';
+import 'widgets/google_identity_fields.dart';
+import 'widgets/complete_profile_card.dart';
+import 'widgets/user_avatar.dart';
+import 'screens/privacy_policy_screen.dart';
+import 'widgets/loading_skeleton.dart';
+import 'auth/login_controller.dart';
+import 'data/app_repository.dart';
+import 'data/glucose_entry.dart';
+export 'data/glucose_entry.dart';
+import 'l10n/localization.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'widgets/brand_mark.dart';
+import 'widgets/recent_measurements_card.dart';
+import 'widgets/date_range_filter.dart';
+import 'widgets/emergency_contact_sheet.dart';
+import 'widgets/metric_card.dart';
+import 'widgets/scrollable_filter_bar.dart';
+import 'widgets/glucose_summary_card.dart';
 import 'design_system.dart';
 import 'main.dart';
 
-class GlucoseEntry {
-  const GlucoseEntry({required this.value, required this.moment, required this.at});
-  final int value;
-  final String moment;
-  final DateTime at;
-  String get dateLabel => '${at.day.toString().padLeft(2, '0')}/${at.month.toString().padLeft(2, '0')}';
-  String get timeLabel => '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
-}
 
-class GlicSplash extends StatelessWidget {
-  const GlicSplash({super.key});
+class GlicSplash extends StatefulWidget {
+  const GlicSplash({super.key, this.destinationBuilder});
+  final Widget Function()? destinationBuilder;
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFFF9F5FB), GlicColors.lavender, Color(0xFFF9F7FC)],
-        ),
-      ),
-      child: SafeArea(child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Spacer(),
-            Container(
-              height: 116, width: 116,
-              decoration: BoxDecoration(
-                color: GlicColors.primary, borderRadius: BorderRadius.circular(34),
-                boxShadow: [BoxShadow(color: GlicColors.primary.withValues(alpha: .16), blurRadius: 30, offset: const Offset(0, 12))],
-              ),
-              child: const Icon(Icons.water_drop_rounded, size: 65, color: Colors.white),
-            ),
-            const SizedBox(height: 24),
-            Text('GlicNote', style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: GlicColors.primary, fontSize: 38)),
-            const SizedBox(height: 12),
-            const Text('Seu cuidado, um registro de cada vez.', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: GlicColors.muted)),
-            const Spacer(),
-            SizedBox(width: double.infinity, child: FilledButton(
-              onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const GlicShell())),
-              child: const Text('Começar'),
-            )),
-            const SizedBox(height: 24),
-          ],
-        ),
-      )),
-    ),
-  );
+  State<GlicSplash> createState() => _GlicSplashState();
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.records, required this.onSeeAll, required this.onAdd});
-  final List<GlucoseEntry> records;
-  final VoidCallback onSeeAll;
-  final VoidCallback onAdd;
+class _GlicSplashState extends State<GlicSplash> with SingleTickerProviderStateMixin {
+  late final AnimationController animation;
+  bool started = false;
+
+  @override
+  void initState() {
+    super.initState();
+    animation = AnimationController(vsync: this, duration: Duration(milliseconds: 2800))
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          Navigator.of(context).pushReplacement(PageRouteBuilder<void>(
+            pageBuilder: (context, primaryAnimation, secondaryAnimation) => widget.destinationBuilder?.call() ?? GlicShell(),
+            transitionDuration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero : Duration(milliseconds: 400),
+            transitionsBuilder: (context, opacity, secondaryAnimation, child) => FadeTransition(opacity: opacity, child: child),
+          ));
+        }
+      });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!started) {
+      started = true;
+      animation.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    animation.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final latest = records.first;
-    final average = (records.map((e) => e.value).reduce((a,b) => a+b) / records.length).round();
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final logo = CurvedAnimation(parent: animation, curve: Interval(0, .3, curve: Curves.easeOutCubic));
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [GlicColors.accent, GlicColors.primary, GlicColors.primaryDark],
+        )),
+        child: SafeArea(child: Padding(
+          padding: EdgeInsets.all(28),
+          child: Column(children: [
+            Spacer(),
+            FadeTransition(
+              opacity: reducedMotion ? AlwaysStoppedAnimation(1) : logo,
+              child: ScaleTransition(
+                scale: reducedMotion ? AlwaysStoppedAnimation(1) : Tween<double>(begin: .9, end: 1).animate(logo),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  BrandIcon(),
+                  SizedBox(height: 20),
+                  BrandWordmark(),
+                ]),
+              ),
+            ),
+            SizedBox(height: 24),
+            Text(context.l10n.tagline,
+              textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 16)),
+            Spacer(),
+            Text(context.l10n.splashFooter,
+              textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 12)),
+            SizedBox(height: 20),
+          ]),
+        )),
+      ),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key, required this.records, required this.onSeeAll, required this.onAdd, this.onProfile, this.loading = false, this.photoUrl, this.needsRegistration = false, this.onCompleteRegistration});
+  final bool needsRegistration;
+  final VoidCallback? onCompleteRegistration;
+  final String? photoUrl;
+  final bool loading;
+  final List<GlucoseEntry> records;
+  final VoidCallback onSeeAll;
+  final VoidCallback onAdd;
+  final VoidCallback? onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading && records.isEmpty) return const HomeSkeleton();
+    final latest = records.isEmpty ? null : records.first;
+    final average = records.isEmpty ? null : (records.map((e) => e.value).reduce((a,b) => a+b) / records.length).round();
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+      padding: GlicLayout.pagePadding,
       children: [
         Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Olá, bem-vindo!', style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 4),
-            Text('Minha glicemia', style: Theme.of(context).textTheme.headlineSmall),
-          ])),
-          CircleAvatar(backgroundColor: GlicColors.lavender, child: const Icon(Icons.person_outline, color: GlicColors.primary)),
+          Expanded(child: Align(alignment: Alignment.centerLeft,
+            child: BrandWordmark(width: 125, assetPath: 'assets/branding/text_logo_home.svg'))),
+          IconButton(onPressed: onProfile, tooltip: context.l10n.myProfile, icon: UserAvatar(photoUrl: photoUrl)),
         ]),
-        const SizedBox(height: 26),
-        GlicCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Última medição', style: TextStyle(color: GlicColors.muted, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('${latest.value}', style: const TextStyle(fontSize: 48, height: 1, fontWeight: FontWeight.w800, color: GlicColors.primary)),
-            const Padding(padding: EdgeInsets.only(left: 7, bottom: 5), child: Text('mg/dL', style: TextStyle(color: GlicColors.muted))),
-          ]),
-          const SizedBox(height: 12),
-          Row(children: [
-            const Icon(Icons.schedule_rounded, size: 17, color: GlicColors.muted),
-            const SizedBox(width: 7),
-            Text('${latest.dateLabel} às ${latest.timeLabel}  •  ${latest.moment}'),
-          ]),
-        ])),
-        const SizedBox(height: 16),
+        SizedBox(height: GlicSpace.lg),
+        if (needsRegistration && onCompleteRegistration != null) ...[
+          CompleteProfileCard(onTap: onCompleteRegistration!),
+          const SizedBox(height: GlicLayout.cardGap),
+        ],
+        if (latest != null) ...[
         Row(children: [
-          Expanded(child: _MetricCard(label: 'Média de registros', value: '$average', suffix: 'mg/dL', icon: Icons.monitor_heart_outlined)),
-          const SizedBox(width: 12),
-          Expanded(child: _MetricCard(label: 'Medições', value: '${records.length}', suffix: 'registros', icon: Icons.analytics_outlined)),
+          Icon(Icons.schedule_rounded, size: 16, color: GlicColors.muted),
+          SizedBox(width: GlicLayout.labelGap),
+          Expanded(child: Text(context.l10n.lastReading(context.readingDate(latest.at), context.time(latest.at)),
+            style: Theme.of(context).textTheme.bodySmall)),
         ]),
-        const SizedBox(height: 26),
-        const SectionHeading('Evolução recente'),
-        const SizedBox(height: 12),
-        GlicCard(child: SizedBox(height: 160, child: GlucoseChart(entries: records.take(6).toList().reversed.toList()))),
-        const SizedBox(height: 26),
-        SectionHeading('Últimos registros', trailing: TextButton(onPressed: onSeeAll, child: const Text('Ver todos'))),
-        const SizedBox(height: 12),
-        ...records.take(3).map((entry) => Padding(padding: const EdgeInsets.only(bottom: 9), child: EntryTile(entry: entry))),
-        const SizedBox(height: 12),
-        SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('Nova medição'))),
+        SizedBox(height: GlicLayout.labelGap),
+        GlucoseSummaryCard(
+          value: latest.value,
+          insulinUnits: latest.insulinUnits,
+          detail: context.momentLabel(latest.moment),
+        ),
+        ] else GlicCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(context.l10n.noReadingsTitle, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: GlicSpace.sm),
+          Text(context.l10n.noReadingsDescription),
+        ])),
+        SizedBox(height: GlicLayout.cardGap),
+        RecentMeasurementsCard(entries: records, onSeeAll: onSeeAll),
+        SizedBox(height: GlicLayout.cardGap),
+        Row(children: [
+          Expanded(child: MetricCard(label: context.l10n.average, value: average == null ? '—' : context.number(average), suffix: 'mg/dL', icon: Icons.monitor_heart_outlined)),
+          SizedBox(width: GlicLayout.columnGap),
+          Expanded(child: MetricCard(label: context.l10n.measurements, value: context.number(records.length), suffix: context.l10n.records, icon: Icons.analytics_outlined)),
+        ]),
+        SizedBox(height: GlicLayout.cardGap),
+        SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: onAdd, icon: Icon(Icons.add), label: Text(context.l10n.newReading))),
       ],
     );
   }
 }
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.label, required this.value, required this.suffix, required this.icon});
-  final String label, value, suffix;
-  final IconData icon;
-  @override Widget build(BuildContext context) => GlicCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Icon(icon, color: GlicColors.primary),
-    const SizedBox(height: 12),
-    Text(label, style: const TextStyle(fontSize: 12, color: GlicColors.muted)),
-    const SizedBox(height: 6),
-    Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 28, color: GlicColors.ink)),
-    Text(suffix, style: const TextStyle(fontSize: 11, color: GlicColors.muted)),
-  ]));
-}
-
 class EntryTile extends StatelessWidget {
   const EntryTile({super.key, required this.entry});
   final GlucoseEntry entry;
   @override Widget build(BuildContext context) => GlicCard(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 13),
     child: Row(children: [
-      Container(padding: const EdgeInsets.all(11), decoration: BoxDecoration(color: GlicColors.lavender.withValues(alpha: .6), borderRadius: BorderRadius.circular(14)),
-        child: const Icon(Icons.water_drop_outlined, color: GlicColors.primary)),
-      const SizedBox(width: 13),
+      Container(padding: EdgeInsets.all(11), decoration: BoxDecoration(color: GlicColors.lavender.withValues(alpha: .6), borderRadius: BorderRadius.circular(14)),
+        child: Icon(Icons.water_drop_outlined, color: GlicColors.primary)),
+      SizedBox(width: 13),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(entry.moment, style: const TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 3),
-        Text('${entry.dateLabel} • ${entry.timeLabel}', style: const TextStyle(fontSize: 12, color: GlicColors.muted)),
+        Wrap(spacing: GlicSpace.sm, runSpacing: GlicSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Text(context.momentLabel(entry.moment), style: TextStyle(fontWeight: FontWeight.w700)),
+          if (entry.insulinUnits != null) InsulinBadge(units: entry.insulinUnits!),
+        ]),
+        SizedBox(height: 3),
+        Text('${context.readingDate(entry.at)} • ${context.time(entry.at)}', style: TextStyle(fontSize: 12, color: GlicColors.muted)),
       ])),
       Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text('${entry.value}', style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: GlicColors.primary)),
-        const Text('mg/dL', style: TextStyle(fontSize: 11, color: GlicColors.muted)),
+        Text(context.number(entry.value), style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: GlicColors.primary)),
+        Text('mg/dL', style: TextStyle(fontSize: 11, color: GlicColors.muted)),
       ]),
     ]),
   );
@@ -150,26 +197,25 @@ class GlucoseChart extends StatelessWidget {
   const GlucoseChart({super.key, required this.entries});
   final List<GlucoseEntry> entries;
   @override Widget build(BuildContext context) {
-    if (entries.isEmpty) return const Center(child: Text('Sem medições'));
+    if (entries.isEmpty) return Center(child: Text(context.l10n.emptyChart));
     return LayoutBuilder(builder: (context, constraints) {
       final maximum = math.max(180, entries.map((e) => e.value).reduce(math.max) + 20);
       return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
         for (final entry in entries)
           Expanded(child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
+            padding: EdgeInsets.symmetric(horizontal: 5),
             child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-              Text('${entry.value}', style: const TextStyle(fontSize: 10, color: GlicColors.muted)),
-              const SizedBox(height: 5),
+              Text(context.number(entry.value), style: TextStyle(fontSize: 10, color: GlicColors.muted)),
+              SizedBox(height: 5),
               Container(
                 height: math.max(8.0, (constraints.maxHeight - 50) * entry.value / maximum),
                 decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
-                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [GlicColors.coral, GlicColors.primary]),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(9)),
+                  gradient: GlicGradients.measurement,
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(entry.dateLabel, style: const TextStyle(fontSize: 9, color: GlicColors.muted)),
+              SizedBox(height: 6),
+              Text(context.readingDate(entry.at), style: TextStyle(fontSize: 9, color: GlicColors.muted)),
             ]),
           )),
       ]);
@@ -178,87 +224,188 @@ class GlucoseChart extends StatelessWidget {
 }
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key, required this.records});
+  const HistoryScreen({super.key, required this.records, this.loading = false});
+  final bool loading;
   final List<GlucoseEntry> records;
   @override State<HistoryScreen> createState() => _HistoryScreenState();
 }
 class _HistoryScreenState extends State<HistoryScreen> {
   String filter = 'Todos';
+  DateTimeRange? period;
   @override Widget build(BuildContext context) {
-    final items = widget.records.where((entry) => filter == 'Todos' || entry.moment == filter).toList();
-    return ListView(padding: const EdgeInsets.fromLTRB(20, 20, 20, 28), children: [
-      Text('Histórico', style: Theme.of(context).textTheme.headlineSmall),
-      const SizedBox(height: 5),
-      const Text('Acompanhe a evolução dos seus registros.'),
-      const SizedBox(height: 24),
-      SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
-        for (final option in ['Todos', 'Jejum', 'Após café', 'Após almoço', 'Após lanche'])
-          Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(
-            selected: filter == option, label: Text(option),
-            selectedColor: GlicColors.lavender,
-            onSelected: (_) => setState(() => filter = option),
-          )),
-      ])),
-      const SizedBox(height: 20),
-      const SectionHeading('Visão geral'),
-      const SizedBox(height: 12),
+    if (widget.loading && widget.records.isEmpty) return const HistorySkeleton();
+    final items = widget.records.where((entry) {
+      final matchesMoment = filter == 'Todos' || entry.moment == filter;
+      final day = DateUtils.dateOnly(entry.at);
+      final matchesDate = period == null ||
+          (!day.isBefore(DateUtils.dateOnly(period!.start)) && !day.isAfter(DateUtils.dateOnly(period!.end)));
+      return matchesMoment && matchesDate;
+    }).toList();
+    return ListView(padding: EdgeInsets.fromLTRB(20, 20, 20, 28), children: [
+      Text(context.l10n.history, style: Theme.of(context).textTheme.headlineSmall),
+      SizedBox(height: 5),
+      Text(context.l10n.historySubtitle),
+      SizedBox(height: 24),
+      DateRangeFilter(value: period, onChanged: (value) => setState(() => period = value)),
+      SizedBox(height: 12),
+      ScrollableFilterBar(
+        options: const ['Todos', 'Jejum', 'Após café', 'Após almoço', 'Após lanche'],
+        selected: filter,
+        labelBuilder: context.momentLabel,
+        onSelected: (option) => setState(() => filter = option),
+      ),
+      SizedBox(height: 20),
+      SectionHeading(context.l10n.overview),
+      SizedBox(height: 12),
       GlicCard(child: SizedBox(height: 185, child: GlucoseChart(entries: items.take(7).toList().reversed.toList()))),
-      const SizedBox(height: 22),
-      SectionHeading('Medições', trailing: Text('${items.length} registros', style: const TextStyle(fontSize: 12))),
-      const SizedBox(height: 12),
-      if (items.isEmpty) const GlicCard(child: Text('Nenhum registro encontrado.')),
-      ...items.map((item) => Padding(padding: const EdgeInsets.only(bottom: 9), child: EntryTile(entry: item))),
+      SizedBox(height: 22),
+      SectionHeading(context.l10n.measurements, trailing: Text(context.l10n.readingCount(items.length), style: TextStyle(fontSize: 12))),
+      SizedBox(height: 12),
+      if (items.isEmpty) GlicCard(child: Text(context.l10n.emptyHistory)),
+      ...items.map((item) => Padding(padding: EdgeInsets.only(bottom: 9), child: EntryTile(entry: item))),
     ]);
   }
 }
 
-class AddRecordScreen extends StatefulWidget {
-  const AddRecordScreen({super.key, required this.onSave});
-  final ValueChanged<GlucoseEntry> onSave;
-  @override State<AddRecordScreen> createState() => _AddRecordScreenState();
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key, this.initialName, this.initialEmail, this.onSignOut, this.repository, this.profile, this.onProfileUpdated});
+  final ValueChanged<LoginProfile>? onProfileUpdated;
+  final AppRepository? repository;
+  final LoginProfile? profile;
+  final String? initialName;
+  final String? initialEmail;
+  final Future<void> Function()? onSignOut;
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
-class _AddRecordScreenState extends State<AddRecordScreen> {
-  final form = GlobalKey<FormState>();
-  final controller = TextEditingController();
-  String moment = 'Jejum';
-  @override void dispose() { controller.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(20), children: [
-    Text('Nova medição', style: Theme.of(context).textTheme.headlineSmall),
-    const SizedBox(height: 8),
-    const Text('Registre uma nova medição de glicemia.'),
-    const SizedBox(height: 24),
-    GlicCard(child: Form(key: form, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      TextFormField(
-        controller: controller,
-        autofocus: false,
-        keyboardType: TextInputType.number,
-        decoration: const InputDecoration(labelText: 'Glicemia (mg/dL)', prefixIcon: Icon(Icons.water_drop_outlined)),
-        validator: (value) {
-          final number = int.tryParse(value?.trim() ?? '');
-          return number == null || number <= 0 || number > 1000 ? 'Informe um valor válido.' : null;
-        },
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late LoginProfile profile;
+  bool contactLoading = false;
+  bool contactFailed = false;
+  bool signingOut = false;
+
+  @override
+  void initState() {
+    super.initState();
+    profile = widget.profile ?? LoginProfile(id: 'demo', name: widget.initialName ?? '', email: widget.initialEmail);
+    if (widget.repository != null) loadContact();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.profile != null && widget.profile != oldWidget.profile) profile = widget.profile!;
+  }
+
+  Future<void> completeRegistration() async {
+    final saved = await Navigator.of(context).push<LoginProfile>(MaterialPageRoute(
+      builder: (_) => CompleteProfileScreen(profile: profile, repository: widget.repository)));
+    if (!mounted || saved == null) return;
+    setState(() => profile = saved);
+    widget.onProfileUpdated?.call(saved);
+    AppToast.show(context, context.l10n.profileSaved);
+  }
+  EmergencyContact? emergencyContact;
+
+  Future<void> loadContact() async {
+    setState(() { contactLoading = true; contactFailed = false; });
+    try {
+      final loaded = await widget.repository!.contact();
+      if (mounted) setState(() => emergencyContact = loaded);
+    } catch (_) {
+      if (mounted) setState(() => contactFailed = true);
+    } finally { if (mounted) setState(() => contactLoading = false); }
+  }
+
+  Future<void> editEmergencyContact() async {
+    if (contactFailed) {
+      await loadContact();
+      if (!mounted || contactFailed) return;
+    }
+    final contact = await showModalBottomSheet<EmergencyContact>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: GlicColors.background,
+      isDismissible: widget.repository == null,
+      enableDrag: widget.repository == null,
+      builder: (_) => EmergencyContactSheet(contact: emergencyContact, onSave: widget.repository?.saveContact),
+    );
+    if (!mounted || contact == null) return;
+    setState(() => emergencyContact = contact.name.isEmpty ? null : contact);
+    AppToast.show(context, context.l10n.contactSaved);
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: EdgeInsets.all(20),
+    children: [
+      Text(context.l10n.myProfile, style: Theme.of(context).textTheme.headlineSmall),
+      SizedBox(height: 8),
+      Text(context.l10n.profileSubtitle),
+      SizedBox(height: 24),
+      GlicCard(
+        child: Column(children: [
+          UserAvatar(photoUrl: profile.photoUrl, radius: 36),
+          SizedBox(height: 12),
+          Text(profile.name.isEmpty ? context.l10n.yourProfile : profile.name,
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center),
+          SizedBox(height: 4),
+          Text(profile.username == null ? context.l10n.profileTagline : '@${profile.username}'),
+          if (profile.diabetesType != null) ...[
+            const SizedBox(height: GlicSpace.sm),
+            Text('${context.l10n.diabetesType}: ${context.diabetesTypeLabel(profile.diabetesType!)}'),
+          ],
+          if (profile.ageAt(DateTime.now()) != null) ...[
+            const SizedBox(height: GlicSpace.sm),
+            Text(context.l10n.ageYears(profile.ageAt(DateTime.now())!)),
+          ],
+        ]),
       ),
-      const SizedBox(height: 18),
-      DropdownButtonFormField<String>(
-        initialValue: moment,
-        decoration: const InputDecoration(labelText: 'Momento da medição'),
-        items: ['Jejum', 'Após café', 'Após almoço', 'Após lanche', 'Após janta', 'Outro']
-          .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-        onChanged: (v) => setState(() => moment = v ?? moment),
+      SizedBox(height: 24),
+      SectionHeading(context.l10n.personalDetails),
+      const SizedBox(height: GlicSpace.compact),
+      GlicCard(child: GoogleIdentityFields(profile: profile)),
+      const SizedBox(height: GlicSpace.lg),
+      if (contactLoading)
+        const GlicCard(padding: EdgeInsets.zero, child: ContactSkeleton())
+      else NavigationCard(
+        icon: Icons.contact_emergency_outlined,
+        title: context.l10n.emergencyContact,
+        subtitle: contactFailed ? context.l10n.syncError : emergencyContact == null ? context.l10n.addContact :
+          '${emergencyContact!.name} • ${emergencyContact!.phone}${emergencyContact!.relationship.isEmpty ? '' : '\n${emergencyContact!.relationship}'}',
+        onTap: editEmergencyContact,
       ),
-      const SizedBox(height: 24),
-      FilledButton.icon(
-        onPressed: () {
-          if (form.currentState?.validate() != true) return;
-          widget.onSave(GlucoseEntry(value: int.parse(controller.text.trim()), moment: moment, at: DateTime.now()));
-          controller.clear();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Medição adicionada nesta sessão.')));
-        },
-        icon: const Icon(Icons.check),
-        label: const Text('Salvar medição'),
+      const SizedBox(height: GlicLayout.cardGap),
+      NavigationCard(
+        icon: Icons.privacy_tip_outlined,
+        title: context.l10n.privacyPolicy,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => const PrivacyPolicyScreen())),
       ),
-    ]))),
-    const SizedBox(height: 15),
-    const Text('Os dados ficam apenas em memória nesta versão.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
-  ]);
+      const SizedBox(height: GlicLayout.cardGap),
+      CompleteProfileCard(onTap: completeRegistration, complete: !profile.needsRegistration),
+      const SizedBox(height: GlicSpace.md),
+      if (widget.onSignOut != null) ...[
+        OutlinedButton.icon(
+          onPressed: signingOut ? null : () async {
+            setState(() => signingOut = true);
+            try { await widget.onSignOut!(); }
+            catch (_) {
+              if (context.mounted) AppToast.show(context, context.l10n.loginError, kind: ToastKind.error);
+            } finally { if (mounted) setState(() => signingOut = false); }
+          },
+          icon: const Icon(Icons.logout_rounded),
+          label: Text(context.l10n.signOut),
+        ),
+        const SizedBox(height: GlicSpace.md),
+      ],
+      if (widget.repository == null) Text(context.l10n.sessionNotice,
+          textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
+    ],
+  );
 }
