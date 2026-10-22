@@ -115,3 +115,7 @@ leitura, fornecidos pelo Google. A idade é calculada a partir da data, sem salv
 um valor de idade no banco. A data completa não aparece no perfil público.
 O tipo de diabetes (1 ou 2) também é opcional e privado.
 A API precisa estar na migração V6 e na versão correspondente do contrato de perfil.
+
+## Desenvolvimento e publicação
+
+Veja [o fluxo dev → main](docs/desenvolvimento-deploy.md).
