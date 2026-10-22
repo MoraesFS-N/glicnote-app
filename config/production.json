@@ -1,0 +1,7 @@
+{
+  "AUTH_ENABLED": "true",
+  "SUPABASE_URL": "https://wwgdipdpiumvuibqlejr.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_BfTOHcDkUGF7WMZ1IaLgZA_pr5y7Fsm",
+  "AUTH_REDIRECT_URL": "com.glicnote.app://login-callback",
+  "API_BASE_URL": "https://glicnote-api.onrender.com"
+}
